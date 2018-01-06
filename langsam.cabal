@@ -36,6 +36,7 @@ library
       dhall,
       text
   exposed-modules:
+      Nonprintables
       Homoglyph
       Parser
       Lib

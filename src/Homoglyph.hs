@@ -20,10 +20,10 @@ module Homoglyph where
                       newText x = replace x (map Map.! x) text
                       newMap x = Map.delete x map
 
-    normalize :: String -> IO Text
+    normalize :: Text -> IO Text
     normalize str = do
         characterSet <- input auto "./src/config/basic_latin.dhall"
         homoglyphs <- TIO.readFile "./src/config/homoglyphs"
         let homoMap = mapping homoglyphs
         let subset = pickConfusables characterSet homoMap
-        return $ substitute subset (pack str)
+        return $ substitute subset str
