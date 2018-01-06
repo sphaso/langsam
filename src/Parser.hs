@@ -1,7 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Parser where
-    import Text.ParserCombinators.Parsec
+    import Text.Parsec.Text
+    import Text.Parsec.Combinator
+    import Text.Parsec.Prim
+    import Text.Parsec.Char
     import qualified Data.Map.Strict as Map
     import qualified Data.Text as T
     import Control.Monad (void)
@@ -20,15 +23,17 @@ module Parser where
         char ';'
         spaces
         to1 <- many1 $ oneOf hex
-        -- spaces
-        -- to2 <- many1 $ oneOf hex
-        manyTill anyChar (void (char '\n') <|> eof)
-        let (x:xs) = escape [from, to1]
+        spaces
+        tail <- optionMaybe . many1 $ oneOf hex
+        let to2 = maybe "" id tail
+
+        manyTill anyChar (void (char '\n'))
+        let (x:xs) = escape [from, to1, to2]
         return (T.pack x, T.pack $ concat xs)
 
     comments :: Parser ()
     comments = do
-        (char '#') *> manyTill anyChar (void (char '\n') <|> eof)
+        (char '#') *> manyTill anyChar (void (char '\n'))
         return ()
 
     newlines :: Parser ()
@@ -36,12 +41,15 @@ module Parser where
         char '\n'
         return ()
 
-    skip = many1 $ (comments <|> newlines)
-    line = many1 $ (try skip) *> assoc
+    skip :: Parser ()
+    skip = optional . skipMany1 $ (comments <|> newlines)
+
+    line :: Parser [(T.Text, T.Text)]
+    line = many1 $ skip *> assoc <* (skip <|> eof)
 
     parsing text = case parse line "homoglyphs" text of
                      Left err -> error (show err)
                      Right couple -> couple
 
-    mapping :: String -> Map.Map T.Text T.Text
-    mapping text = Map.fromList $ parsing text
+    mapping :: T.Text -> Map.Map T.Text T.Text
+    mapping = Map.fromList . parsing
